@@ -209,7 +209,7 @@ io_sandbox_enter(int src_fd)
 		goto error;
 
 	if (cap_rights_limit(STDOUT_FILENO, cap_rights_init(&rights,
-			CAP_EVENT, CAP_FCNTL, CAP_FSTAT, CAP_LOOKUP,
+			CAP_EVENT, CAP_FCNTL, CAP__io_fstat, CAP_LOOKUP,
 			CAP_WRITE, CAP_SEEK)))
 		goto error;
 
@@ -299,14 +299,14 @@ io_wait(file_pair *pair, int timeout, bool is_reading)
 /// a small unavoidable race, but this is much better than nothing (the file
 /// could have been moved/replaced even hours earlier).
 static void
-io_unlink(const char *name, const struct stat *known_st)
+io_unlink(const char *name, const struct _io_stat *known_st)
 {
 #if defined(TUKLIB_DOSLIKE)
 	// On DOS-like systems, st_ino is meaningless, so don't bother
 	// testing it. Just silence a compiler warning.
 	(void)known_st;
 #else
-	struct stat new_st;
+	struct _io_stat new_st;
 
 	// If --force was used, use stat() instead of lstat(). This way
 	// (de)compressing symlinks works correctly. However, it also means
@@ -409,7 +409,7 @@ io_copy_attrs(const file_pair *pair)
 	//
 	// First, get the nanosecond part of the timestamps. As of writing,
 	// it's not standardized by POSIX, and there are several names for
-	// the same thing in struct stat.
+	// the same thing in struct _io_stat.
 	long atime_nsec;
 	long mtime_nsec;
 
@@ -577,7 +577,7 @@ io_open_src_real(file_pair *pair)
 	// by POSIX). Check for symlinks with a separate lstat() on
 	// these systems.
 	if (!follow_symlinks) {
-		struct stat st;
+		struct _io_stat st;
 		if (lstat(pair->src_name, &st)) {
 			message_error("%s: %s", pair->src_name,
 					strerror(errno));
@@ -636,7 +636,7 @@ io_open_src_real(file_pair *pair)
 #	else
 		if (errno == ELOOP && !follow_symlinks) {
 			const int saved_errno = errno;
-			struct stat st;
+			struct _io_stat st;
 			if (lstat(pair->src_name, &st) == 0
 					&& S_ISLNK(st.st_mode))
 				was_symlink = true;
@@ -662,7 +662,7 @@ io_open_src_real(file_pair *pair)
 	// Stat the source file. We need the result also when we copy
 	// the permissions, and when unlinking.
 	//
-	// NOTE: Use stat() instead of fstat() with DJGPP, because
+	// NOTE: Use stat() instead of _io_fstat() with DJGPP, because
 	// then we have a better chance to get st_ino value that can
 	// be used in io_open_dest_real() to prevent overwriting the
 	// source file.
@@ -670,7 +670,7 @@ io_open_src_real(file_pair *pair)
 	if (stat(pair->src_name, &pair->src_st))
 		goto error_msg;
 #else
-	if (fstat(pair->src_fd, &pair->src_st))
+	if (_io_fstat(pair->src_fd, &pair->src_st))
 		goto error_msg;
 #endif
 
@@ -867,7 +867,7 @@ io_open_dest_real(file_pair *pair)
 			return true;
 
 #ifdef __DJGPP__
-		struct stat st;
+		struct _io_stat st;
 		if (stat(pair->dest_name, &st) == 0) {
 			// Check that it isn't a special file like "prn".
 			if (st.st_dev == -1) {
@@ -917,9 +917,9 @@ io_open_dest_real(file_pair *pair)
 
 #ifndef TUKLIB_DOSLIKE
 	// dest_st isn't used on DOS-like systems except as a dummy
-	// argument to io_unlink(), so don't fstat() on such systems.
-	if (fstat(pair->dest_fd, &pair->dest_st)) {
-		// If fstat() really fails, we have a safe fallback here.
+	// argument to io_unlink(), so don't _io_fstat() on such systems.
+	if (_io_fstat(pair->dest_fd, &pair->dest_st)) {
+		// If _io_fstat() really fails, we have a safe fallback here.
 #	if defined(__VMS)
 		pair->dest_st.st_ino[0] = 0;
 		pair->dest_st.st_ino[1] = 0;

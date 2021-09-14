@@ -30,6 +30,13 @@ typedef union {
 	uint64_t u64[IO_BUFFER_SIZE / sizeof(uint64_t)];
 } io_buf;
 
+#ifdef _WIN32
+#define _io_stat	_stat64
+#define _io_fstat	_fstat64
+#else
+#define _io_stat	stat
+#define _io_fstat	fstat
+#endif
 
 typedef struct {
 	/// Name of the source filename (as given on the command line) or
@@ -66,10 +73,10 @@ typedef struct {
 	off_t dest_pending_sparse;
 
 	/// Stat of the source file.
-	struct stat src_st;
+	struct _io_stat src_st;
 
 	/// Stat of the destination file.
-	struct stat dest_st;
+	struct _io_stat dest_st;
 
 } file_pair;
 
