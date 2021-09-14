@@ -16,7 +16,10 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <stdio.h>
+
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif
 
 #include "getopt.h"
 #include "tuklib_progname.h"

@@ -12,7 +12,7 @@
 
 #include "private.h"
 
-#if !(defined(HAVE_CLOCK_GETTIME) && HAVE_DECL_CLOCK_MONOTONIC)
+#if !(defined(HAVE_CLOCK_GETTIME) && HAVE_DECL_CLOCK_MONOTONIC) && defined(HAVE_SYS_TIME_H)
 #	include <sys/time.h>
 #endif
 
@@ -39,13 +39,14 @@ mytime_now(void)
 		clk_id = CLOCK_REALTIME;
 
 	return (uint64_t)tv.tv_sec * 1000 + (uint64_t)(tv.tv_nsec / 1000000);
-#else
+#elif defined(HAVE_SYS_TIME_H)
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 	return (uint64_t)tv.tv_sec * 1000 + (uint64_t)(tv.tv_usec / 1000);
+#else
+    return (uint64_t) GetTickCount64();
 #endif
 }
-
 
 extern void
 mytime_set_start_time(void)

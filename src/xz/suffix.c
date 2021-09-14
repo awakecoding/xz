@@ -17,8 +17,10 @@
 #endif
 
 // For case-insensitive filename suffix on case-insensitive systems
-#if defined(TUKLIB_DOSLIKE) || defined(__VMS)
+#if (defined(TUKLIB_DOSLIKE) || defined(__VMS)) && !defined(_WIN32)
 #	define strcmp strcasecmp
+#else
+#   define strcmp _stricmp
 #endif
 
 

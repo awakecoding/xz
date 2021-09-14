@@ -49,6 +49,7 @@
 
 cmake_minimum_required(VERSION 3.13...3.16 FATAL_ERROR)
 
+include(CheckIncludeFiles)
 include(CheckSymbolExists)
 include(CheckStructHasMember)
 include(cmake/tuklib_integer.cmake)
@@ -509,9 +510,24 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/liblzma-config.cmake"
 # getopt_long
 #############################################################################
 
-# The command line tools needs this.
-check_symbol_exists(getopt_long getopt.h HAVE_GETOPT_LONG)
+if(MSVC)
+    set(HAVE_GETOPT_LONG TRUE)
+    set(WINGETOPT_SRC_DIR "${CMAKE_SOURCE_DIR}/windows/wingetopt")
+    include_directories("${WINGETOPT_SRC_DIR}")
+    add_library(wingetopt STATIC
+        "${WINGETOPT_SRC_DIR}/getopt.c"
+        "${WINGETOPT_SRC_DIR}/getopt.h")
+else()
+    # The command line tools needs this.
+    check_symbol_exists(getopt_long getopt.h HAVE_GETOPT_LONG)
+endif()
 
+check_include_files(unistd.h HAVE_UNISTD_H)
+check_include_files(sys/time.h HAVE_SYS_TIME_H)
+
+if(MSVC)
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+endif()
 
 #############################################################################
 # xzdec
@@ -537,6 +553,12 @@ if(HAVE_GETOPT_LONG)
 
     target_link_libraries(xzdec PRIVATE liblzma)
 
+    if(MSVC)
+        target_link_libraries(xzdec PRIVATE wingetopt)
+    endif()
+
+    tuklib_add_definition_if(xzdec HAVE_UNISTD_H)
+
     tuklib_progname(xzdec)
 
     install(TARGETS xzdec
@@ -555,7 +577,7 @@ endif()
 # xz
 #############################################################################
 
-if(NOT MSVC AND HAVE_GETOPT_LONG)
+if(HAVE_GETOPT_LONG)
     add_executable(xz
         src/common/mythread.h
         src/common/sysdefs.h
@@ -606,10 +628,17 @@ if(NOT MSVC AND HAVE_GETOPT_LONG)
 
     target_link_libraries(xz PRIVATE liblzma)
 
+    if(MSVC)
+        target_link_libraries(xz PRIVATE wingetopt)
+    endif()
+
     target_compile_definitions(xz PRIVATE ASSUME_RAM=128)
 
     tuklib_progname(xz)
     tuklib_mbstr(xz)
+
+    tuklib_add_definition_if(xz HAVE_SYS_TIME_H)
+    tuklib_add_definition_if(xz HAVE_UNISTD_H)
 
     check_symbol_exists(optreset getopt.h HAVE_OPTRESET)
     tuklib_add_definition_if(xz HAVE_OPTRESET)

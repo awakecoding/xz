@@ -47,6 +47,18 @@ static bool warn_fchown;
 #	define O_NOCTTY 0
 #endif
 
+#if defined(_WIN32)
+#if !defined(S_IRUSR) && !defined(S_IWUSR)
+#define S_IRUSR _S_IREAD
+#define S_IWUSR _S_IWRITE
+#define mode_t uint32_t
+#endif
+#if !defined(S_ISDIR) && !defined(S_ISREG)
+#define S_ISDIR(mode)  (((mode) & S_IFMT) == S_IFDIR)
+#define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
+#endif
+#endif
+
 // Using this macro to silence a warning from gcc -Wlogical-op.
 #if EAGAIN == EWOULDBLOCK
 #	define IS_EAGAIN_OR_EWOULDBLOCK(e) ((e) == EAGAIN)

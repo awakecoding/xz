@@ -32,6 +32,11 @@
 // size_t and NULL
 #include <stddef.h>
 
+// ssize_t
+#ifdef _MSC_VER
+#define ssize_t SSIZE_T
+#endif
+
 #ifdef HAVE_INTTYPES_H
 #	include <inttypes.h>
 #endif
